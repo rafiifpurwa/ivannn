@@ -1,0 +1,59 @@
+Kode Anda sudah cukup siap untuk hardware asli. Berikut yang perlu Anda ganti atau periksa:
+
+1. WiFi (wajib diganti)
+cpp
+const char* WIFI_SSID = "NamaWiFiAnda";
+const char* WIFI_PASS = "PasswordWiFiAnda";
+
+CirkitWifi hanya ada di simulator Cirkit. Pakai WiFi 2.4 GHz, karena ESP32 tidak mendukung 5 GHz.
+
+2. Pin (periksa sesuai wiring)
+cpp
+#define DHT_PIN  12
+#define I2C_SDA  13
+#define I2C_SCL  14
+
+Pin ini hanya contoh dari simulator. Di hardware asli, Anda bebas memakai pin lain, tetapi sebaiknya:
+
+Pakai pin default I2C ESP32: SDA = GPIO21, SCL = GPIO22. Ini paling aman dan paling umum.
+Hindari pin bermasalah: GPIO6-11 (terhubung ke flash), GPIO0, 2, 12, 15 (strapping pin; GPIO12 bisa membuat boot gagal jika ditarik HIGH saat startup). Karena DHT_PIN Anda di GPIO12, sebaiknya pindahkan ke GPIO4, 5, 18, atau 19.
+
+Contoh yang disarankan:
+
+cpp
+#define DHT_PIN  4
+#define I2C_SDA  21
+#define I2C_SCL  22
+3. Wiring fisik
+Komponen	Pin	ke ESP32
+DHT11	VCC	3.3V (atau 5V)
+	DATA	DHT_PIN (+ resistor pull-up 10kΩ ke VCC, jika modul DHT11 3-pin sudah ada resistornya, tidak perlu)
+	GND	GND
+LCD I2C	VCC	5V (VIN), banyak LCD I2C butuh 5V agar terang
+	SDA/SCL	sesuai pin I2C
+	GND	GND
+4. Alamat I2C LCD
+cpp
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+Di LCD asli, alamatnya bisa 0x27 atau 0x3F. Jika layar kosong, jalankan I2C scanner untuk mengecek alamatnya. Jika layar menyala tetapi tidak ada teks, putar potensiometer kontras di belakang modul I2C.
+
+5. MQTT dan TLS
+cpp
+const bool USE_TLS = true;
+
+Di hardware asli, true dengan port 8886 seharusnya bisa berjalan, dan itu lebih baik daripada plain. Catatan:
+
+test.mosquitto.org adalah broker publik; siapa saja bisa membaca topik Anda. Jangan kirim data sensitif.
+setInsecure() melewatkan verifikasi sertifikat. Untuk tugas/tes tidak masalah, tetapi untuk produksi gunakan setCACert(ROOT_CA).
+Pastikan topik unik: ionic/final/tim01/... sudah cukup spesifik, tetapi tetap publik.
+6. Hal kecil yang perlu diperhatikan
+Library: pastikan PubSubClient, ArduinoJson (v7, karena Anda memakai JsonDocument), DHT sensor library, LiquidCrystal_I2C sudah terpasang.
+Buffer MQTT: ukuran default PubSubClient 256 byte. Payload Anda (~100-130 byte) masih aman.
+Board: pilih ESP32 Dev Module dan baud serial monitor 115200.
+DHT11: jangan dibaca lebih cepat dari 1 detik sekali. Interval 5 detik Anda sudah aman.
+LCD: lcd.printf hanya tersedia di beberapa versi library. Jika error kompilasi, ganti dengan lcd.print() memakai snprintf ke buffer dulu.
+Ringkasan perubahan minimal
+WIFI_SSID dan WIFI_PASS → WiFi Anda
+Pin → DHT_PIN 4, I2C_SDA 21, I2C_SCL 22 (atau sesuai wiring Anda)
+Cek alamat LCD (0x27 atau 0x3F)
